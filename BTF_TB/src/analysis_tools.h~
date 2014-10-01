@@ -144,7 +144,7 @@ float TimeConstFrac(int t1, int t2, const vector<float>* samples, float AmpFract
         return minSample*step;
     for(int iSample=minSample; iSample>t1; iSample--)
     {
-        if(samples->at(iSample) > minValue*AmpFraction) 
+        if(samples->at(iSample) < minValue*AmpFraction) 
         {
             cfSample = iSample;
             break;
