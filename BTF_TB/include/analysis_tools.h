@@ -44,7 +44,6 @@ using namespace std;
 float time_CF[10]={};
 float amp_max[10]={};
 float charge[10]={};
-float charge_CF[10]={};
 float baseline[10]={};
 //---global branches
 int sci_front_adc=0, run_id=0;
@@ -55,6 +54,7 @@ int fibreY[8]={};
 int isPCOn[10]={};
 int HV[10]={};
 int isTriggerOn[10]={};
+float X0=0.;
 
 void init()
 {
@@ -67,7 +67,6 @@ void SetOutTree(TTree* outTree)
     outTree->Branch("time_CF",&time_CF,"time_CF[10]/F");
     outTree->Branch("amp_max",&amp_max,"amp_max[10]/F");
     outTree->Branch("charge",&charge,"charge[10]/F");
-    outTree->Branch("charge_CF",&charge_CF,"charge_CF[10]/F");
     outTree->Branch("baseline",&baseline,"baseline[10]/F");
     //---hodoscope branches
     outTree->Branch("fibreX",&fibreX,"fibreX[8]/I");
@@ -78,6 +77,7 @@ void SetOutTree(TTree* outTree)
     //---additional branches
     outTree->Branch("isPCOn",&isPCOn,"isPCOn[10]/I");
     outTree->Branch("HV",&HV,"HV[10]/I");
+    outTree->Branch("X0",&X0,"X0/F");
     outTree->Branch("isTriggerOn",&isTriggerOn,"isTriggerOn[10]/I");
     //    outTree->Branch("MCPName"+nameMCP->at(Ch_1),&baseline_Ch1,"baseline_"+nameMCP->at(Ch_1)+"/F");
 }
@@ -102,7 +102,7 @@ void DFT_lowCut(vector<float>* samples, float f_cut)
 
 //---------------------------------------------------------------------------------------
 //---estimate the baseline in a given range and then subtract it from the signal 
-float SubtractBaseline(int tb1, int tb2, vector<float>* samples)
+void SubtractBaseline(int tb1, int tb2, vector<float>* samples)
 {
     float baseline=0;
     //---compute baseline
@@ -116,7 +116,6 @@ float SubtractBaseline(int tb1, int tb2, vector<float>* samples)
     {
         samples->at(iSample) = samples->at(iSample) - baseline;
     }
-    return baseline;
 }
 
 //---------------------------------------------------------------------------------------
