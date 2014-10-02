@@ -1,5 +1,5 @@
 /*******************************************************************************                                                                                  
-THIS CODE COMPUTES THE TRESHOLD FOR EACH MCP USING A FIXED S/B VALUE (IN INPUT)
+THIS PROGRAM COMPUTES THE TRESHOLDS FOR EACH MCP USING A FIXED S/B VALUE (IN INPUT)
                                                                                                     
     compile with --> c++ -o calcTreshold bin/calcTreshold.cpp `root-config --cflags --glibs`                                                                
     run with --> ./calcTreshold ntuples/reco_prova.root 1000 9 2000  
@@ -48,7 +48,7 @@ using namespace std;
 //*******MAIN*******************************************************************                                                                                  
 int main (int argc, char** argv)
 {
-  std::cout<<"-----------COMPUTING CHARGE TRESHOLDS FOR EACH RUN AND CHANNEL------------"<<std::endl;
+  std::cout<<"-----------COMPUTING CHARGE TRESHOLDS FOR EACH CHANNEL------------"<<std::endl;
 
   int SBTreshold=1000;
   int nChannels=9;
@@ -72,49 +72,34 @@ int main (int argc, char** argv)
 
   //-----get the run list and the list of channel to analyze------
   int prevRun=0;
-  std::vector<int> runList;
-  std::vector<std::vector<int> > goodCh;
-  runList.clear();
+  std::vector<int> goodCh;
   goodCh.clear();
-  
-  std::cout<<"--> Run list:";
-  for (int iEntry=0; iEntry<inputTree->GetEntries(); iEntry++)
+
+  std::cout<<"Channels to analyze: ";
+  inputTree->GetEntry(1);
     {
-      inputTree->GetEntry(iEntry);
-      if (run_id!=prevRun)    //new run found!
-	{
-	  runList.push_back(run_id);
-	  prevRun=run_id;
-	  
-	  std::cout<<"\n-Run "<<run_id<<":\nChannels with PC active and HV over treshold: ";
-	  std::vector<int> gChTemp;
-	  gChTemp.clear();
-	  for (int iCh=0; iCh<nChannels; iCh++)  //scan all the channels -> save only the channels with PC on and HV>treshold
-	    {
-	      if (isPCOn[iCh]!=0 && HV[iCh]>=HVtresh) {
-		gChTemp.push_back(iCh);
-		std::cout<<iCh<<" ";
-	      }
-	    }
-	  goodCh.push_back(gChTemp);
-	}
+      for (int iCh=0; iCh<nChannels; iCh++)  //scan all the channels -> save only the channels with PC on and HV>treshold
+        {
+          if (isPCOn[iCh]!=0 && HV[iCh]>=HVtresh) {
+	    goodCh.push_back(iCh);
+	    std::cout<<iCh<<" ";
+          }
+        }
     }
   
 
   //------analyze the good channels and compute the charge tresholds--------
   std::cout<<"\n--------------------------------\n-->OK, now computing tresholds:"<<std::endl;
-  for (int iRun=0; iRun<runList.size(); iRun++)
-    {	
-      for (int iCh=0; iCh<nChannels; iCh++)
+  for (int iCh=0; iCh<nChannels; iCh++)
 	{
 	  //---is it a good channel? check: if not, go to next channel----
 	  std::vector<int>::iterator it;
-	  it = find (goodCh.at(iRun).begin(), goodCh.at(iRun).end(), iCh);
-	  if (it == goodCh.at(iRun).end())   continue;
+	  it = find (goodCh.begin(), goodCh.end(), iCh);
+	  if (it == goodCh.end())    continue;
 
 	  char hSName[100], hBName[100];
-	  sprintf(hSName, "hS_%d_%d", runList.at(iRun), iCh);
-	  sprintf(hBName, "hB_%d_%d", runList.at(iRun), iCh);
+	  sprintf(hSName, "hS_%d", iCh);
+	  sprintf(hBName, "hB_%d", iCh);
 
 	  TH1F *hS = new TH1F(hSName,hSName, 10000, 0, 10000);
 	  TH1F *hB = new TH1F(hBName,hBName, 10000, 0, 10000);
@@ -124,7 +109,7 @@ int main (int argc, char** argv)
 	  sprintf(hBDraw, "baseline[%d]>>%s", iCh, hBName);
 
 	  char cut[300];
-	  sprintf(cut, "sci_front_adc>500 && sci_front_adc<1500 && isPCOn[0]!=0 && run_id==%d && HV>=%d", runList.at(iRun), HVtresh); 
+	  sprintf(cut, "sci_front_adc>500 && sci_front_adc<1500 && isPCOn[0]!=0 && HV>=%d", HVtresh); 
 
 	  inputTree->Draw(hSDraw,cut,"goff");
 	  inputTree->Draw(hBDraw,cut,"goff");
@@ -135,14 +120,13 @@ int main (int argc, char** argv)
 	       double B = hB->Integral(iBin, 10000);
 	       if (S/B > SBTreshold) 
 	         {
-		   std::cout<<"Run: "<<runList.at(iRun)<<" Channel: "<<iCh<<" Treshold Value: "<<iBin<<std::endl;
-	           outputFile<<runList.at(iRun)<<" "<<iCh<<" "<<iBin<<std::endl;
+		   std::cout<<" Channel: "<<iCh<<" Treshold Value: "<<iBin<<std::endl;
+	           outputFile<<iCh<<" "<<iBin<<std::endl;
 	           break;
 	         }
        
 	    }
 	}
-    }  
 
   std::cout<<"\nResults printed in "<<outputFileName<<std::endl;
   return 0;

@@ -1,7 +1,11 @@
 /*******************************************************************************
+THIS PROGRAM READ THE RAW DATA AND PRODUCE THE RECO FILE USED FOR THE ANALYSIS
 -
-    compile with --> c++ -o dumper dumper.cpp `root-config --cflags --glibs`
-    run with --> ./dumper cfg_file inputFolder nChannels outputName
+    compile with --> c++ -o dumper bin/dumper.cpp `root-config --cflags --glibs`
+    run with --> ./dumper cfg/example_cfg_file.cfg /gwteray/users/marzocchi/iMCP/dataTrees 9 prova
+                    where arguments are:  -cfg_file  -inputFolder  -# of channels  -suffix for the output File
+
+BE CAREFUL: the number of channels MUST coincide with the number of channel in the cfg file
 
 *******************************************************************************/
 #include <cstdio>
@@ -40,13 +44,19 @@
 #include "../include/analysis_tools.h"
 #include "../include/init_tree_BTF.h"
 #include "../include/histo_func.h"
+#include "../include/MCPMap.h"
 
 //*******MAIN*******************************************************************
 int main (int argc, char** argv)
 {  
+    std::cout<<"--------DUMPER: READ RAW DATA AND PRODUCE RECO TREE--------"<<std::endl;
 
+    //-----this map tells how the MCPs will be order in the output tree. The names should match the cfg file----
+    Fill_MCPList();  //look into the MCPMap.h class
+    
     //--------Read Options--------------------------------
     ifstream inputCfg (argv[1], ios::in);
+
     std::string inputFolder = argv[2];
     int nChannels = atoi (argv[3]);
     std::string outputFile = argv[4];
@@ -58,16 +68,16 @@ int main (int argc, char** argv)
     outTree->SetDirectory(0);
     SetOutTree(outTree);
 
-    int runN=0, chNumber=0, HVtemp=0;
+    int run=0, chNumber=0, HVtemp=0;
     int PC=0, trigger=0;
+    float X0temp=0.;
     std::string name;
 
+    //---------definitions-----------
     std::map<int, int> PCOn;
     std::map<int, int> HVVal; 
     std::map<int, int> triggerOn; 
     std::map<int, std::string> MCPName; 
-    std::vector<int> runNumber;
-    runNumber.clear();
 
     //-------start to read the cfg file--------
     while(!inputCfg.eof())  
@@ -80,19 +90,17 @@ int main (int argc, char** argv)
       //-----fill maps--------
       for (int count=0; count<nChannels; count++)   //read exactly nChannels lines of the cfg file -> be careful to give the right number in input!!!!
 	{
-	  inputCfg >> runN >> chNumber >> HVtemp >> PC >> trigger >> name;
+	  inputCfg >> run >> chNumber >> HVtemp >> X0temp >> PC >> trigger >> name;
 
 	  PCOn.insert(std::make_pair(chNumber,PC)); 
 	  HVVal.insert(std::make_pair(chNumber,HVtemp)); 
 	  triggerOn.insert(std::make_pair(chNumber,trigger)); 
 	  MCPName.insert(std::make_pair(chNumber,name)); 
 	}
-      runNumber.push_back(runN);
-      
+
       //-----Definitions
       vector<float> digiCh[9];
       float timeCF[9], timeAM[9];
-      float baseline[9];
       float intBase[9], intSignal[9], intSignalCF[9], ampMax[9];
       ///int fibreX[8], hodoYchannels[8];
       //---Chain
@@ -100,17 +108,15 @@ int main (int argc, char** argv)
       InitTree(chain);
       //-----Read raw data tree-----------------------------------------------
       char iRun_str[40];
-      sprintf(iRun_str, "%s/run_IMCP_%d_*.root", (inputFolder).c_str(), runNumber.back());
+      sprintf(iRun_str, "%s/run_IMCP_%d_*.root", (inputFolder).c_str(), run);
       chain->Add(iRun_str);
-      cout << "Reading:  "<<iRun_str << endl;
+      cout << "\nReading:  "<<iRun_str << endl;
       //-----Data loop--------------------------------------------------------
       for(int iEntry=0; iEntry<chain->GetEntries(); iEntry++)
         {
 	    if(iEntry % 1000 == 0)
 		cout << "read entry: " << iEntry << endl;
             //-----Unpack data--------------------------------------------------
-            //---always clear the std::vector !!!
-
             for(int iCh=0; iCh<nChannels; iCh++)
             {
                 digiCh[iCh].clear();
@@ -142,7 +148,7 @@ int main (int argc, char** argv)
                 //---loop over MPC's channels
              for(int iCh=0; iCh<nChannels; iCh++)
                 {
-                    baseline[iCh]=SubtractBaseline(5, 25, &digiCh[iCh]);
+                    SubtractBaseline(5, 25, &digiCh[iCh]);
                     timeCF[iCh]=TimeConstFrac(47, 500, &digiCh[iCh], 0.5);
                     timeAM[iCh]=TimeConstFrac(47, 500, &digiCh[iCh], 1);
                     int t1 = (int)(timeCF[iCh]/0.2) - 3;
@@ -161,23 +167,22 @@ int main (int argc, char** argv)
 			intSignalCF[iCh] = 2000;
                     }
                 }
-             //-----Dump WaveForm Infos------------------------------------------------
 
-	     //dump ntuple
+	     //--------dump ntuple - impulses are negative, invert the sign
 	     for (int iCh=0; iCh<nChannels; iCh++)
 		  {
-		    time_CF[iCh]   = timeCF[iCh];
-		    amp_max[iCh]   = -ampMax[iCh];
-		    charge[iCh]    = -intSignal[iCh];
-		    charge_CF[iCh] = -intSignalCF[iCh];
-		    baseline[iCh]  = -intBase[iCh];
-	    
-		    isPCOn[iCh]      = PCOn.at(iCh);
-		    HV[iCh]          = HVVal.at(iCh);
-		    isTriggerOn[iCh] = triggerOn.at(iCh);
+		    time_CF[MCPList.at(MCPName.at(iCh))]   = timeCF[iCh];
+		    amp_max[MCPList.at(MCPName.at(iCh))]   = -ampMax[iCh];
+		    charge[MCPList.at(MCPName.at(iCh))]    = -intSignal[iCh];
+		    baseline[MCPList.at(MCPName.at(iCh))]  = -intBase[iCh];
+
+		    isPCOn[MCPList.at(MCPName.at(iCh))]      = PCOn.at(iCh);
+		    HV[MCPList.at(MCPName.at(iCh))]          = HVVal.at(iCh);
+		    isTriggerOn[MCPList.at(MCPName.at(iCh))] = triggerOn.at(iCh);
 		  }
 
-      	     run_id = runNumber.back();
+      	     run_id = run;
+	     X0     = X0temp;
 	     outTree->Fill();    
 	}     
         //---Get ready for next run
