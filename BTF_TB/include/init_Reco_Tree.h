@@ -15,7 +15,6 @@
     int                   run_id;   
     int                   isPCOn[10];   
     int                   HV[10];   
-    int                   isTriggerOn[10];   
     float                 X0; 
 
     // List of branches
@@ -29,7 +28,6 @@
     TBranch        *b_run_id;   //!
     TBranch        *b_isPCOn;   //!
     TBranch        *b_HV;   //!
-    TBranch        *b_isTriggerOn;   //!
     TBranch        *b_X0;
    
     void InitRecoTree(TTree* nt)
@@ -44,7 +42,6 @@
         nt->SetBranchAddress("run_id", &run_id, &b_run_id);
         nt->SetBranchAddress("isPCOn", &isPCOn, &b_isPCOn);
         nt->SetBranchAddress("HV", &HV, &b_HV);
-        nt->SetBranchAddress("isTriggerOn", &isTriggerOn, &b_isTriggerOn);
         nt->SetBranchAddress("X0", &X0, &b_X0);
     }
 
