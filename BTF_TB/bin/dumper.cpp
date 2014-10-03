@@ -68,15 +68,13 @@ int main (int argc, char** argv)
     outTree->SetDirectory(0);
     SetOutTree(outTree);
 
-    int run=0, chNumber=0, HVtemp=0;
-    int PC=0, trigger=0;
+    int run=0, chNumber=0, HVtemp=0, PC=0;
     float X0temp=0.;
     std::string name;
 
     //---------definitions-----------
     std::map<int, int> PCOn;
     std::map<int, int> HVVal; 
-    std::map<int, int> triggerOn; 
     std::map<int, std::string> MCPName; 
 
     //-------start to read the cfg file--------
@@ -84,17 +82,15 @@ int main (int argc, char** argv)
     {
       PCOn.clear();
       HVVal.clear();
-      triggerOn.clear();
       MCPName.clear();
 
       //-----fill maps--------
       for (int count=0; count<nChannels; count++)   //read exactly nChannels lines of the cfg file -> be careful to give the right number in input!!!!
 	{
-	  inputCfg >> run >> chNumber >> HVtemp >> X0temp >> PC >> trigger >> name;
+	  inputCfg >> run >> chNumber >> HVtemp >> X0temp >> PC >> name;
 
 	  PCOn.insert(std::make_pair(chNumber,PC)); 
 	  HVVal.insert(std::make_pair(chNumber,HVtemp)); 
-	  triggerOn.insert(std::make_pair(chNumber,trigger)); 
 	  MCPName.insert(std::make_pair(chNumber,name)); 
 	}
 
@@ -124,12 +120,6 @@ int main (int argc, char** argv)
             }
             //---Read the entry
             chain->GetEntry(iEntry);
-
-            //---DAQ bug workaround                                                                                                                               
-            if(run < 145) goodEvt = 10;
-            else goodEvt = 1;
-            if(evtNumber % goodEvt == 0)
-	      {
 
             //---Read SciFront ADC value and set the e- multiplicity 
 	    for(int iCh=0; iCh<nAdcChannels; iCh++)
@@ -185,13 +175,11 @@ int main (int argc, char** argv)
 
 		    isPCOn[MCPList.at(MCPName.at(iCh))]      = PCOn.at(iCh);
 		    HV[MCPList.at(MCPName.at(iCh))]          = HVVal.at(iCh);
-		    isTriggerOn[MCPList.at(MCPName.at(iCh))] = triggerOn.at(iCh);
 		  }
 
       	     run_id = run;
 	     X0     = X0temp;
 	     outTree->Fill();    
-	  }
 	}     
         //---Get ready for next run
         chain->Delete();
