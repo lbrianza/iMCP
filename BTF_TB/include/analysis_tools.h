@@ -53,7 +53,6 @@ int fibreY[8]={};
 
 int isPCOn[10]={};
 int HV[10]={};
-int isTriggerOn[10]={};
 float X0=0.;
 
 void init()
@@ -78,7 +77,6 @@ void SetOutTree(TTree* outTree)
     outTree->Branch("isPCOn",&isPCOn,"isPCOn[10]/I");
     outTree->Branch("HV",&HV,"HV[10]/I");
     outTree->Branch("X0",&X0,"X0/F");
-    outTree->Branch("isTriggerOn",&isTriggerOn,"isTriggerOn[10]/I");
     //    outTree->Branch("MCPName"+nameMCP->at(Ch_1),&baseline_Ch1,"baseline_"+nameMCP->at(Ch_1)+"/F");
 }
 
