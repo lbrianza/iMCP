@@ -38,10 +38,12 @@ THIS PROGRAM COMPUTES THE TRESHOLDS FOR EACH MCP USING A FIXED S/B VALUE (IN INP
 #include "TString.h"
 #include "TClass.h"
 #include "TApplication.h"
+#include "TCanvas.h"
 
 //#include "../include/analysis_tools.h"
 #include "../include/init_Reco_Tree.h"
 #include "../include/histo_func.h"
+#include "../include/MCPMap.h"
 
 using namespace std;
 
@@ -49,10 +51,12 @@ using namespace std;
 int main (int argc, char** argv)
 {
   std::cout<<"-----------COMPUTING CHARGE TRESHOLDS FOR EACH CHANNEL------------"<<std::endl;
+  std::cout<<"NB: MCP is analyzed only if HV>treshold and PC is ON---------"<<std::endl;
 
   int SBTreshold=1000;
   int nChannels=9;
   int HVtresh=2000;
+  int doPlot=0;
 
   std::string inputFileName = argv[1];  
   std::cout<<"\nReading file: "<<inputFileName<<std::endl;
@@ -61,11 +65,14 @@ int main (int argc, char** argv)
     SBTreshold = atoi(argv[2]);  //desired treshold (e.g. S/B=1000)
     nChannels = atoi(argv[3]);  //nChannels in the reco tree
     HVtresh = atoi(argv[4]);   //HV treshold
+    doPlot = atoi(argv[5]);   //do plots?
   }
 
   TFile *inputFile = new TFile ((inputFileName).c_str()); 
   TTree *inputTree = (TTree*)inputFile->Get("reco_tree");
   InitRecoTree(inputTree);  
+
+  Fill_inverted_MCPList();
 
   std::string outputFileName = "cfg/treshold.txt";
   std::ofstream outputFile ((outputFileName).c_str(), std::ofstream::out);
@@ -101,8 +108,8 @@ int main (int argc, char** argv)
 	  sprintf(hSName, "hS_%d", iCh);
 	  sprintf(hBName, "hB_%d", iCh);
 
-	  TH1F *hS = new TH1F(hSName,hSName, 10000, 0, 10000);
-	  TH1F *hB = new TH1F(hBName,hBName, 10000, 0, 10000);
+	  TH1F *hS = new TH1F(hSName,hSName, 1000, 0, 10000);
+	  TH1F *hB = new TH1F(hBName,hBName, 1000, 0, 10000);
 	      
 	  char hSDraw[100], hBDraw[100];
 	  sprintf(hSDraw, "charge[%d]>>%s", iCh, hSName);
@@ -120,12 +127,24 @@ int main (int argc, char** argv)
 	       double B = hB->Integral(iBin, 10000);
 	       if (S/B > SBTreshold) 
 	         {
-		   std::cout<<" Channel: "<<iCh<<" Treshold Value: "<<iBin<<std::endl;
-	           outputFile<<iCh<<" "<<iBin<<std::endl;
+		   std::cout<<" Channel: "<<iCh<<" ("<<inverted_MCPList.at(iCh)<<")   Treshold Value: "<<iBin*10<<std::endl;
+	           outputFile<<iCh<<" "<<iBin*10<<std::endl;
 	           break;
 	         }
        
 	    }
+	  if (doPlot==1) {
+	    char canvasName[100];
+	    sprintf(canvasName, "plots/tresholdScan/charge_channel_%d.pdf", iCh);
+	    TCanvas *c1 = new TCanvas ();
+	    c1->cd();
+	    hS->SetLineColor(2);
+	    hB->SetLineColor(4);
+	    hS->Draw();
+	    hB->Draw("same");
+	    c1->Print(canvasName,"pdf");
+	  }
+
 	}
 
   std::cout<<"\nResults printed in "<<outputFileName<<std::endl;
