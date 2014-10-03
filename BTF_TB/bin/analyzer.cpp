@@ -3,8 +3,8 @@
     selected MCP under test. Also the hodoscope cut are selectable.
 
     compile with ---> c++ -o analyzer bin/analyzer.cpp `root-config --cflags --glibs --libs`
-    run with:      ./analyzer cfg/treshold.txt MiB3 all eff HVScan
-          where the arguments are: 1) cfg file with the tresholds 2) MCP to analyze 3) type of hodoscope cut (all/tight) 4) analysis type (eff,time) 5) suffix of reco file
+    run with:      ./analyzer cfg/treshold.txt MiB3 all eff HVScan Scan2
+          where the arguments are: 1) cfg file with the tresholds 2) MCP to analyze 3) type of hodoscope cut (all/tight) 4) analysis type (eff,time) 5) Scan type (HV or X0) 6) suffix of reco file in input
 
  ****************************************************************************************/
 #include <iostream>
@@ -37,8 +37,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
   gSystem->Load("libTree");
-  char *label, *hodo_cut, *doWhat, ref1[10], ref2[10];
-  int th_ref1=10000, th_ref2=10000, th_mcp=10000;
+  char *label, *hodo_cut, *doWhat, *scanType;
   Fill_MCPList();
   Fill_inverted_MCPList();
 
@@ -46,7 +45,8 @@ int main(int argc, char** argv)
   std::string MCP = argv[2];
   hodo_cut = argv[3];
   doWhat = argv[4];
-  label = argv[5];
+  scanType = argv[5];
+  label = argv[6];
 
   int MCPNumber = MCPList.at(MCP);
   std::map <int,int> treshold;
@@ -102,15 +102,15 @@ int main(int argc, char** argv)
 
   nt->GetEntry(1);
     //---HV Scan
-  if(TString(label).Contains("Scan") == 1)
-    {  
+  //  if(TString(scanType).Contains("Scan") == 1)
+  //   {  
 
       sprintf(str_cut_sig, "charge[%d] > %d", MCPNumber, treshold.at(MCPNumber));
 	//(strcmp(MCP, "MiB2") == 0)
 	//sprintf(str_cut_sig_2D, "-charge_%s > -13.28*amp_max_%s - 350", MCP, MCP);
       sprintf(str_cut_trig0, "charge[%d] < %d  && charge[%d] < %d && sci_front_adc < 500",MCPList.at("Trig1"), treshold.at(MCPList.at("Trig1")), MCPList.at("Trig2"), treshold.at(MCPList.at("Trig2")));
       sprintf(str_cut_trig1, "charge[%d] > %d  && charge[%d] > %d && sci_front_adc > 500 && sci_front_adc < 1500",MCPList.at("Trig1"), treshold.at(MCPList.at("Trig1")), MCPList.at("Trig2"), treshold.at(MCPList.at("Trig2")));
-    }
+      // }
 
     //---Hodoscope cut
   float thX[8]={113,95,127,118,94,134,133,160};
@@ -176,7 +176,7 @@ int main(int argc, char** argv)
 	if(eff < 0)
 	    eff = 0;
 	char var_name[3] = "X0";
-	if(TString(label).Contains("HVScan") == 1)
+	if(TString(scanType).Contains("HV") == 1)
 	    sprintf(var_name, "HV");
 
 	//	std::cout<<HVVal.at(0)<<" "<<eff<<std::endl;
@@ -189,7 +189,7 @@ int main(int argc, char** argv)
 		printf(" %s\teff\te_%s\te_eff\n", var_name, var_name);
 		printf("-----------------------------\n");
 	    }
-	    if(TString(label).Contains("HVScan") == 1)
+	    if(TString(scanType).Contains("HV") == 1)
 	      //   std::cout<<HVVal.at(i)<<"\t"<<eff<<"\t"<<0.<<" "<<e_eff<<std::endl;
 	      printf("%d\t%.3f\t%.3f\t%.3f\n", HVVal.at(i), eff, 0., e_eff);
 	    else
@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 		printf("-----------------------------\n");
 	    }
 	    nt->Draw(var_sig, cut_trig1 && cut_sig_2D && cut_hodoX && cut_hodoY && cut_run);
-	    if(TString(label).Contains("HVScan") == 1)
+	    if(TString(scanType).Contains("HV") == 1)
 	      printf("%d\t%.0f\t%.0f\t%.0f\n", HVVal.at(i), -h_sig->GetMean(), 0., h_sig->GetMeanError());
 	    else
 	      printf("%.3f\t%.0f\t%.0f\t%.0f\n", X0Step.at(i), -h_sig->GetMean(), 0., h_sig->GetMeanError());
@@ -234,7 +234,7 @@ int main(int argc, char** argv)
 		printf(" %s\tt_res\te_%s\te_t_res\tX²_prob\n", var_name, var_name);
 		printf("---------------------------------------\n");
 	    }
-	    if(TString(label).Contains("HVScan") == 1)
+	    if(TString(scanType).Contains("HV") == 1)
 	      printf("%d\t%.1f\t%.0f\t%.1f\t%.3f\n", HVVal.at(i), t_res, 0., e_t_res, prob);
 	    else
 	      printf("%.3f\t%.0f\t%.3f\t%.0f\t%.3f\n", X0Step.at(i), t_res, 0., e_t_res, prob);
@@ -242,6 +242,10 @@ int main(int argc, char** argv)
 		printf("---------------------------------------\n");
 	    TCanvas* c = new TCanvas();
 	    char plot_name[100];
+
+	    std::string command = "if [ ! -e plots/time_resolutions/"+string(label)+" ] ; then mkdir plots/time_resolutions/"+label+" ; fi";
+	    system(command.c_str());
+
 	    sprintf(plot_name, "plots/time_resolutions/%s/%s_%d.pdf", label, MCP.c_str(), i);
 	    h_time->Draw();
 	    c->Print(plot_name, "pdf");
